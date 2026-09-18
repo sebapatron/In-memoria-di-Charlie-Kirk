@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memoriale — Charlie Kirk</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Georgia, "Times New Roman", serif;
+    color: #f4efe6;
+    background:
+      radial-gradient(circle at 50% 20%, rgba(180,140,65,.12), transparent 35%),
+      linear-gradient(180deg, #101114 0%, #07080a 100%);
+    display: flex;
+    justify-content: center;
+    padding: 28px 16px;
+  }
+  .wrap { width: min(900px, 100%); text-align: center; }
+  .eyebrow {
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    font: 12px Arial, sans-serif;
+    color: #aaa39a;
+  }
+  h1 {
+    margin: 12px 0 8px;
+    font-size: clamp(38px, 8vw, 72px);
+    font-weight: 400;
+  }
+  .subtitle {
+    max-width: 650px;
+    margin: 0 auto;
+    color: #bbb5ac;
+    line-height: 1.6;
+    font: 16px/1.6 Arial, sans-serif;
+  }
+  .panel {
+    margin-top: 34px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 24px;
+    background: rgba(255,255,255,.035);
+    padding: 28px 20px 24px;
+    box-shadow: 0 20px 70px rgba(0,0,0,.35);
+  }
+  #count {
+    font: 600 18px Arial, sans-serif;
+    color: #ddd5c7;
+  }
+  #candles {
+    min-height: 300px;
+    margin: 25px auto 5px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-end;
+    align-content: center;
+    gap: 48px 34px;
+    max-width: 780px;
+    padding: 35px 10px;
+  }
+  .candle {
+    position: relative;
+    width: 30px;
+    height: 72px;
+    border-radius: 7px 7px 5px 5px;
+    background: linear-gradient(90deg, #cfc7b8, #fffaf0 48%, #c9c0b1);
+    box-shadow: 0 7px 16px rgba(0,0,0,.35);
+  }
+  .candle:before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -6px;
+    width: 3px;
+    height: 9px;
+    background: #25211c;
+    transform: translateX(-50%);
+  }
+  .flame {
+    position: absolute;
+    left: 50%;
+    top: -34px;
+    width: 18px;
+    height: 29px;
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 55% 0 55% 55%;
+    background: #e6a83a;
+    box-shadow: 0 0 20px #e6a83a, 0 0 42px rgba(230,168,58,.35);
+    animation: flicker .8s ease-in-out infinite alternate;
+  }
+  .flame:after {
+    content: "";
+    position: absolute;
+    width: 8px;
+    height: 14px;
+    left: 4px;
+    top: 7px;
+    border-radius: 55% 0 55% 55%;
+    background: #fff5ce;
+  }
+  @keyframes flicker {
+    from { transform: translateX(-50%) rotate(41deg) scale(.93); }
+    to { transform: translateX(-50%) rotate(49deg) scale(1.06); }
+  }
+  .buttons { margin-top: 15px; }
+  button {
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 12px;
+    padding: 13px 18px;
+    margin: 5px;
+    color: #f4efe6;
+    background: #17191d;
+    font: 600 14px Arial, sans-serif;
+    cursor: pointer;
+    transition: .2s;
+  }
+  button:hover { background: #22252b; transform: translateY(-1px); }
+  button.primary {
+    background: #80652d;
+    border-color: #a98743;
+  }
+  button.primary:hover { background: #96783a; }
+  #status {
+    min-height: 22px;
+    margin-top: 10px;
+    color: #aaa39a;
+    font: 13px Arial, sans-serif;
+  }
+  .note {
+    margin-top: 22px;
+    color: #77736d;
+    font: 12px/1.5 Arial, sans-serif;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .flame { animation: none; }
+    button { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="eyebrow">In memoria</div>
+  <h1>Charlie Kirk</h1>
+  <p class="subtitle">
+    Un piccolo spazio virtuale per accendere una candela in sua memoria
+    e condividere con altri il ricordo.
+  </p>
+
+  <section class="panel">
+    <div id="count">0 candele accese</div>
+    <div id="candles" aria-label="Candele accese"></div>
+
+    <div class="buttons">
+      <button class="primary" id="lightBtn">🕯️ Accendi una candela</button>
+      <button id="shareBtn">🔗 Condividi</button>
+    </div>
+
+    <div id="status" aria-live="polite"></div>
+  </section>
+
+  <div class="note">
+    Il link condiviso conserva il numero di candele presenti al momento della condivisione.
+    Questa versione funziona senza server.
+  </div>
+</main>
+
+<script>
+(() => {
+  const countEl = document.getElementById("count");
+  const candlesEl = document.getElementById("candles");
+  const statusEl = document.getElementById("status");
+  const lightBtn = document.getElementById("lightBtn");
+  const shareBtn = document.getElementById("shareBtn");
+
+  const params = new URLSearchParams(window.location.search);
+  let count = Number.parseInt(params.get("candles") || "0", 10);
+  if (!Number.isFinite(count) || count < 0) count = 0;
+  count = Math.min(count, 100);
+
+  function render() {
+    countEl.textContent = count === 1 ? "1 candela accesa" : `${count} candele accese`;
+    candlesEl.replaceChildren();
+
+    for (let i = 0; i < count; i++) {
+      const candle = document.createElement("div");
+      candle.className = "candle";
+      candle.setAttribute("aria-label", "Candela accesa");
+
+      const flame = document.createElement("div");
+      flame.className = "flame";
+
+      candle.appendChild(flame);
+      candlesEl.appendChild(candle);
+    }
+  }
+
+  lightBtn.addEventListener("click", () => {
+    if (count >= 100) {
+      statusEl.textContent = "Hai raggiunto il limite di questa versione.";
+      return;
+    }
+    count++;
+    render();
+    statusEl.textContent = "Candela accesa. Puoi condividere il memoriale.";
+  });
+
+  shareBtn.addEventListener("click", async () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("candles", String(count));
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Memoriale — Charlie Kirk",
+          text: "Ti invito a lasciare una candela nel memoriale.",
+          url: url.toString()
+        });
+        statusEl.textContent = "Memoriale condiviso.";
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url.toString());
+        statusEl.textContent = "Link copiato negli appunti.";
+      } else {
+        statusEl.textContent = "Copia questo link: " + url.toString();
+      }
+    } catch (error) {
+      if (error && error.name !== "AbortError") {
+        statusEl.textContent = "Non è stato possibile condividere automaticamente.";
+      }
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
