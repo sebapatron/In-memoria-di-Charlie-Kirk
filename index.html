@@ -167,21 +167,44 @@
   </div>
 </main>
 
-<script>
-(() => {
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import {
+    getFirestore,
+    doc,
+    onSnapshot,
+    updateDoc,
+    increment
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAGS6WMCRLOK2q2lEZQ_wCdExQix0tRbtM",
+    authDomain: "memoriale-charlie-kirk.firebaseapp.com",
+    projectId: "memoriale-charlie-kirk",
+    storageBucket: "memoriale-charlie-kirk.firebasestorage.app",
+    messagingSenderId: "890496111501",
+    appId: "1:890496111501:web:5d9d70ac67a91f105523c4"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
   const countEl = document.getElementById("count");
   const candlesEl = document.getElementById("candles");
   const statusEl = document.getElementById("status");
   const lightBtn = document.getElementById("lightBtn");
   const shareBtn = document.getElementById("shareBtn");
 
-  const params = new URLSearchParams(window.location.search);
-  let count = Number.parseInt(params.get("candles") || "0", 10);
-  if (!Number.isFinite(count) || count < 0) count = 0;
-  count = Math.min(count, 100);
+  const candleRef = doc(db, "Memoriale", "Candele");
+
+  let count = 0;
 
   function render() {
-    countEl.textContent = count === 1 ? "1 candela accesa" : `${count} candele accese`;
+    countEl.textContent =
+      count === 1
+        ? "1 candela accesa"
+        : ${count} candele accese;
+
     candlesEl.replaceChildren();
 
     for (let i = 0; i < count; i++) {
@@ -197,43 +220,61 @@
     }
   }
 
-  lightBtn.addEventListener("click", () => {
-    if (count >= 100) {
-      statusEl.textContent = "Hai raggiunto il limite di questa versione.";
-      return;
+  onSnapshot(candleRef, (snapshot) => {
+    if (snapshot.exists()) {
+      count = snapshot.data().Count || 0;
+      render();
     }
-    count++;
-    render();
-    statusEl.textContent = "Candela accesa. Puoi condividere il memoriale.";
+  });
+
+  lightBtn.addEventListener("click", async () => {
+    lightBtn.disabled = true;
+
+    try {
+      await updateDoc(candleRef, {
+        Count: increment(1)
+      });
+
+      statusEl.textContent =
+        "Candela accesa. Puoi condividere il memoriale.";
+    } catch (error) {
+      console.error(error);
+      statusEl.textContent =
+        "Non è stato possibile accendere la candela.";
+    }
+
+    lightBtn.disabled = false;
   });
 
   shareBtn.addEventListener("click", async () => {
     const url = new URL(window.location.href);
-    url.searchParams.set("candles", String(count));
+    url.search = "";
 
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Memoriale — Charlie Kirk",
+          title: "Memoriale – Charlie Kirk",
           text: "Ti invito a lasciare una candela nel memoriale.",
           url: url.toString()
         });
+
         statusEl.textContent = "Memoriale condiviso.";
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url.toString());
         statusEl.textContent = "Link copiato negli appunti.";
       } else {
-        statusEl.textContent = "Copia questo link: " + url.toString();
+        statusEl.textContent =
+          "Copia questo link: " + url.toString();
       }
     } catch (error) {
-      if (error && error.name !== "AbortError") {
-        statusEl.textContent = "Non è stato possibile condividere automaticamente.";
+      if (error.name !== "AbortError") {
+        statusEl.textContent =
+          "Non è stato possibile condividere automaticamente.";
       }
     }
   });
 
   render();
-})();
 </script>
 </body>
 </html>
